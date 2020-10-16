@@ -14,4 +14,13 @@ router.get('/GetTables', middleware.validateToken(), function (req, res) {
     })
 });
 
+router.get('/GetSchemas', middleware.validateToken(), function (req, res) {
+    const token = utils.getBearerToken(req);
+    tablesController.getSchemas(token, req.query).then(result => {
+        res.status(HttpStatus.OK).json({ data: result });
+    }).catch(err => {
+        res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: err.message });
+    })
+});
+
 module.exports = router;
