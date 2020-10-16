@@ -1,7 +1,7 @@
 const HttpStatus = require('http-status-codes');
 const jwt = require('jsonwebtoken');
 const secret_token = require('../config/envconfig').secret_token;
-const utils = require('../utils');
+const utils = require('../utils/utils');
 const poolManager = require('../poolManager');
 
 exports.validateRequest = (fields, bodyRequest) => {
