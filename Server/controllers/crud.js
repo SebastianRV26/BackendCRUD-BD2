@@ -75,6 +75,6 @@ const generetePgsqlCrud = async (pool, req) => {
 
         scripts += '\n\n'
     }
-
+    console.log(scripts);
     return scripts;
 }
