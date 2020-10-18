@@ -45,7 +45,24 @@ exports.generateCreate = (schema, table, columnInfo) => {
 };
 
 exports.generateRead = (schema, table, columnInfo) => {
-    return '';
+    let parameters = '';
+    let parametersWithType = '';
+    let columns = '';
+
+    Object.entries(columnInfo).forEach(([key, value]) => {
+        // Exclude identities
+        //if (value.id == 0) {
+        parameters += `(@${value.nombre} IS NULL) OR (@${value.nombre}=${value.nombre}) AND `;
+        parametersWithType += `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`},\n`;
+        columns += `${value.nombre}, `;
+        //}
+    });
+
+    parameters = parameters.substring(0, parameters.length - 5);
+    parametersWithType = parametersWithType.substring(0, parametersWithType.length - 2);
+    columns = columns.substring(0, columns.length - 2);
+    return `CREATE OR ALTER PROC ${schema}.read_${table.split('.')[1]}\n${parametersWithType}\
+                \nAS\nBEGIN\n    SELECT * FROM ${table}(${columns})\n        WHERE ${parameters}\nEND\nGO`;
 }
 
 exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
