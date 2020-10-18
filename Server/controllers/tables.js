@@ -29,7 +29,7 @@ exports.getSchemes = async (token, req) => {
     // mssql
     if (pool instanceof ConnectionPool) {
         result = await pool.request()
-            .query("SELECT s.name as TABLE_SCHEMA\
+            .query("SELECT s.name as table_schema\
             FROM sys.schemas s\
                     INNER JOIN sys.sysusers u\
                     ON u.uid = s.principal_id\
@@ -38,13 +38,13 @@ exports.getSchemes = async (token, req) => {
         return result.recordset;
     } else { // postgresql
         const client = await pool.connect();
-        result = await client.query("SELECT s.nspname AS TABLE_SCHEMA\
+        result = await client.query("SELECT s.nspname AS table_schema\
             FROM pg_catalog.pg_namespace s\
                 JOIN pg_catalog.pg_user u on u.usesysid = s.nspowner\
                 WHERE nspname NOT IN ('information_schema', 'pg_catalog', 'public')\
                 AND nspname not like 'pg_toast%'\
                 AND nspname not like 'pg_temp_%';");
-        result.rows.push({TABLE_SCHEMA:"public"})
+        result.rows.push({table_schema:"public"})
         return result.rows;
     }
     return result;

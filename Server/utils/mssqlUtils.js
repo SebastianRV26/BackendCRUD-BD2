@@ -41,7 +41,7 @@ exports.generateCreate = (schema, table, columnInfo) => {
     columns = columns.substring(0, columns.length - 2);
 
     return `CREATE OR ALTER PROC ${schema}.ins_${table.split('.')[1]}\n${parametersWithType}\
-                \nAS\nBEGIN\n    INSERT INTO ${table}(${columns})\n        VALUES(${parameters});\nEND`;
+                \nAS\nBEGIN\n    INSERT INTO ${table}(${columns})\n        VALUES(${parameters});\nEND\nGO`;
 };
 
 exports.generateRead = (schema, table, columnInfo) => {
@@ -49,18 +49,29 @@ exports.generateRead = (schema, table, columnInfo) => {
 }
 
 exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
-    /*let parametersWithType = '';
+    let parametersWithType = '', updateData = '', pkData = '';
 
     Object.entries(columnInfo).forEach(([key, value]) => {
-        // Exclude identities
-        if (value.id == 0) {
-            parameters += `@${value.nombre}, `;
-            parametersWithType += `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`},\n`;
-            columns += `${value.nombre}, `;
+        if (primaryKeys.filter(pk => pk.COLUMN_NAME == value.nombre).length == 0) {
+            updateData += `\n        ${value.nombre} = ISNULL(@${value.nombre}, ${value.nombre}),`;
+            parametersWithType +=
+                `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`} = NULL,\n`;
+        } else {
+            parametersWithType +=
+                `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`},\n`;
         }
-    });*/   
+    });
 
-    return '';
+    pkData = `        ${primaryKeys[0].COLUMN_NAME} = @${primaryKeys[0].COLUMN_NAME}`;
+    for (i = 1; i < primaryKeys.length; i++) {
+        pkData += ` AND ${primaryKeys[i].COLUMN_NAME} = @${primaryKeys[i].COLUMN_NAME}`;
+    }
+
+    parametersWithType = parametersWithType.substring(0, parametersWithType.length - 2);
+    updateData = updateData.substring(0, updateData.length - 1);
+
+    return `CREATE OR ALTER PROC ${schema}.upd_${table.split('.')[1]}\n${parametersWithType}\
+                \nAS\nBEGIN\n    UPDATE ${table} SET${updateData}\n    WHERE\n${pkData};\nEND\nGO`;
 }
 
 exports.generateDelete = (schema, table, columnInfo, primaryKeys) => {
