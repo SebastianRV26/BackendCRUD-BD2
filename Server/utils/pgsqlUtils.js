@@ -64,7 +64,26 @@ exports.generateCreate = (schema, table, columnInfo) => {
 };
 
 exports.generateRead = (schema, table, columnInfo) => {
-    return '';
+    let parameters = '';
+    let parametersWithType = '';
+    let columns = '';
+
+    Object.entries(columnInfo).forEach(([key, value]) => {
+        // Exclude identities
+        //if (value.data_type != 'serial' & value.data_type != 'bigserial' & value.data_type != 'smallserial') {
+        parameters += `(_${value.attname} IS NULL) OR (_${value.attname} = ${table.split('.')[1]}.${value.attname}) AND `;
+        parametersWithType += `_${value.attname} ${value.data_type},\n`;
+        columns += `${value.attname}, `;
+        //}
+    });
+    parameters = parameters.substring(0, parameters.length - 5);
+    parametersWithType = parametersWithType.substring(0, parametersWithType.length - 2);
+    columns = columns.substring(0, columns.length - 2);
+
+    return `CREATE OR REPLACE FUNCTION ${schema}.read_${table.split('.')[1]}(\n${parametersWithType})\n\
+RETURNS TABLE(${parametersWithType}) LANGUAGE 'plpgsql' AS $BODY$ \nBEGIN \n\
+    RETURN QUERY  SELECT * FROM ${table}\n\
+    WHERE ${parameters};\nEND \n$BODY$;`;
 }
 
 exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
@@ -80,7 +99,7 @@ exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
         if(value.data_type == 'serial' || value.data_type == 'bigserial' || value.data_type == 'smallserial'){
             parametersWithType += `    _${value.attname} int,\n`;
         }else{
-            parametersWithType += `    _${value.attname} ${value.data_type}, \n`;
+            parametersWithType += `    _${value.attname} ${value.data_type},\n`;
             if(primaryKeys != value.attname){
                 set += `${value.attname} = _${value.attname}, `;
             }
