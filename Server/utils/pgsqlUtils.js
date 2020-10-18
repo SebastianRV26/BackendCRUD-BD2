@@ -49,7 +49,6 @@ exports.generateCreate = (schema, table, columnInfo) => {
 
     Object.entries(columnInfo).forEach(([key, value]) => {
         // Exclude identities
-        console.log("se imprime esto",value.nombre, value.id);
         if (value.data_type != 'serial' & value.data_type != 'bigserial' & value.data_type != 'smallserial') {
             parameters += `_${value.attname}, `;
             parametersWithType += `    _${value.attname} ${value.data_type},\n`;
@@ -61,7 +60,7 @@ exports.generateCreate = (schema, table, columnInfo) => {
     columns = columns.substring(0, columns.length - 2);
 
     return `CREATE OR REPLACE FUNCTION ${schema}.ins_${table.split('.')[1]}(\n${parametersWithType})\
-            \nRETURNS void AS $BODY$ \nBEGIN\n    INSERT INTO ${table}(${columns})\n        VALUES(${parameters});\nEND; \n$BODY$ \nLANGUAGE 'plpgsql';`;
+            \nRETURNS void AS $BODY$ \nBEGIN\n    INSERT INTO ${table}(${columns})\n        VALUES(${parameters});\nEND \n$BODY$ \nLANGUAGE 'plpgsql'; \n`;
 };
 
 exports.generateRead = (schema, table, columnInfo) => {
@@ -69,9 +68,56 @@ exports.generateRead = (schema, table, columnInfo) => {
 }
 
 exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
-    return '';
+    let parametersWithType = '';
+    let set = '';
+
+    Object.entries(primaryKeys).forEach(([key, value]) => {
+        primaryKeys = value.column_name
+    });
+
+    Object.entries(columnInfo).forEach(([key, value]) => {
+        // Exclude identities
+        if(value.data_type == 'serial' || value.data_type == 'bigserial' || value.data_type == 'smallserial'){
+            parametersWithType += `    _${value.attname} int,\n`;
+        }else{
+            parametersWithType += `    _${value.attname} ${value.data_type}, \n`;
+            if(primaryKeys != value.attname){
+                set += `${value.attname} = _${value.attname}, `;
+            }
+        }
+    });
+    parametersWithType = parametersWithType.substring(0, parametersWithType.length - 2);
+    set = set.substring(0, set.length - 2);
+
+    return `CREATE OR REPLACE FUNCTION ${schema}.upd_${table.split('.')[1]}(\n${parametersWithType})\
+            \nRETURNS void AS $BODY$ \nBEGIN\n    UPDATE ${table} SET ${set} WHERE ${primaryKeys} = _${primaryKeys};\nEND\
+            \n$BODY$ \nLANGUAGE 'plpgsql'; \n`;
 }
 
 exports.generateDelete = (schema, table, columnInfo, primaryKeys) => {
-    return '';
+    let parameters = '';
+    let parametersWithType = '';
+    let columns = '';
+
+    Object.entries(primaryKeys).forEach(([key, value]) => {
+        primaryKeys = value.column_name
+    });
+
+    Object.entries(columnInfo).forEach(([key, value]) => {
+        // Exclude identities
+        if (primaryKeys == value.attname) {
+            parameters += `_${value.attname}, `;
+            if(value.data_type == 'serial' || value.data_type == 'bigserial' || value.data_type == 'smallserial'){
+                parametersWithType += `    _${value.attname} int,\n`;
+            }
+            columns += `${value.attname} `;
+        }
+    });
+    parameters = parameters.substring(0, parameters.length - 2);
+    parametersWithType = parametersWithType.substring(0, parametersWithType.length - 2);
+    columns = columns.substring(0, columns.length - 2);
+
+    return `CREATE OR REPLACE FUNCTION ${schema}.del_${table.split('.')[1]}(\n${parametersWithType})\
+            \nRETURNS void AS $BODY$ \nBEGIN\n    DELETE FROM ${table} WHERE ${primaryKeys} = ${parameters};\nEND\
+            \n$BODY$ \nLANGUAGE 'plpgsql';`;
 }

@@ -92,5 +92,23 @@ exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
 }
 
 exports.generateDelete = (schema, table, columnInfo, primaryKeys) => {
-    return '';
+    let parameters = '';
+    let parametersWithType = '';
+    let columns = '';
+
+    Object.entries(columnInfo).forEach(([key, value]) => {
+        // Exclude identities
+        if (value.id == 1) {
+            parameters += `@${value.nombre}, `;
+            parametersWithType += `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`},\n`;
+            columns += `${value.nombre}, `;
+        }
+    });
+
+    parameters = parameters.substring(0, parameters.length - 2);
+    parametersWithType = parametersWithType.substring(0, parametersWithType.length - 2);
+    columns = columns.substring(0, columns.length - 2);
+
+    return `CREATE OR ALTER PROC ${schema}.del_${table.split('.')[1]}\n${parametersWithType}\
+                \nAS\nBEGIN\n    DELETE FROM ${table} WHERE ${columns} = ${parameters};\nEND \GO`;
 }
