@@ -16,11 +16,20 @@ exports.getCrud = async (token, req) => {
 }
 
 const genereteMssqlCrud = async (pool, req) => {
+    if (req.createSchema) {
+        await createMssqlSchema(pool, req.schema);
+    }
+
     const tables = req.tables;
     let scripts = "";
-    let schema, tableName, columns, primaryKeys;
+    let schema, tableName, columns, primaryKeys, tmp;
 
     for (const table of Object.keys(req.tables)) {
+        if (!tables[table].create && !tables[table].read
+            && !tables[table].update && !tables[table].delete) {
+            continue;
+        }
+
         schema = table.split('.')[0];
         tableName = table.split('.')[1];
         columns = await mssqlUtils.getColumns(schema, tableName, pool);
@@ -28,32 +37,74 @@ const genereteMssqlCrud = async (pool, req) => {
 
         scripts += `-- CRUD ${table}\n`
         if (tables[table].create) {
-            scripts += mssqlUtils.generateCreate(req.schema, table, columns) + '\n';
+            tmp = mssqlUtils.generateCreate(req.schema, table, columns) + '\n';
+            scripts += tmp;
+            if (req.execute) {
+                await pool.request()
+                    .batch(tmp.substring(0, tmp.length - 4));
+            }
         }
         if (tables[table].read) {
-            scripts += mssqlUtils.generateRead(req.schema, table, columns) + '\n';
+            tmp = mssqlUtils.generateRead(req.schema, table, columns) + '\n';
+            scripts += tmp;
+            if (req.execute) {
+                await pool.request()
+                    .batch(tmp.substring(0, tmp.length - 4));
+            }
         }
         if (tables[table].update) {
-            scripts += mssqlUtils.generateUpdate(req.schema, table, columns, primaryKeys) + '\n';
+            if (primaryKeys.length == 0) {
+                scripts += '--No primary keys for update\n\n';
+            } else if (primaryKeys.length == columns.length) {
+                scripts += '--No attribute to update\n\n';
+            } else {
+                tmp = mssqlUtils.generateUpdate(req.schema, table, columns, primaryKeys) + '\n';
+                scripts += tmp;
+                if (req.execute) {
+                    await pool.request()
+                        .batch(tmp.substring(0, tmp.length - 4));
+                }
+            }
         }
         if (tables[table].delete) {
-            scripts += mssqlUtils.generateDelete(req.schema, table, columns, primaryKeys) + '\n';
+            if (primaryKeys.length == 0) {
+                scripts += '--No primary keys to delete\n\n';
+            } else {
+                tmp = mssqlUtils.generateDelete(req.schema, table, columns, primaryKeys) + '\n';
+                scripts += tmp;
+                if (req.execute) {
+                    await pool.request()
+                        .batch(tmp.substring(0, tmp.length - 4));
+                }
+            }
         }
 
         scripts += '\n\n'
     }
 
-    console.log(scripts);
     return scripts;
 }
 
-const generetePgsqlCrud = async (pool, req) => {
-    const tables = req.tables;
+const createMssqlSchema = async (pool, schemaName) => {
+    await pool.request()
+        .query(`CREATE SCHEMA ${schemaName};`);
+}
 
+const generetePgsqlCrud = async (pool, req) => {
+    if (req.createSchema) {
+        await createPgsqlSchema(pool, req.schema);
+    }
+
+    const tables = req.tables;
     let scripts = "";
     let schema, tableName, columns, primaryKeys;;
 
     for (const table of Object.keys(req.tables)) {
+        if (!tables[table].create && !tables[table].read
+            && !tables[table].update && !tables[table].delete) {
+            continue;
+        }
+
         schema = table.split('.')[0];
         tableName = table.split('.')[1];
         columns = await pgsqlUtils.getColumns(schema, tableName, pool);
@@ -67,14 +118,38 @@ const generetePgsqlCrud = async (pool, req) => {
             scripts += pgsqlUtils.generateRead(req.schema, table, columns) + '\n';
         }
         if (tables[table].update) {
-            scripts += pgsqlUtils.generateUpdate(req.schema, table, columns, primaryKeys) + '\n';
+            if (primaryKeys.length == 0) {
+                scripts += '--No primary keys for update\n\n';
+            } else if (primaryKeys.length == columns.length) {
+                scripts += '--No attributes to update\n\n';
+            } else {
+                scripts += pgsqlUtils.generateUpdate(req.schema, table, columns, primaryKeys) + '\n';
+            }
         }
         if (tables[table].delete) {
-            scripts += pgsqlUtils.generateDelete(req.schema, table, columns, primaryKeys) + '\n';
+            if (primaryKeys.length == 0) {
+                scripts += '--No primary keys to delete\n\n';
+            } else {
+                scripts += pgsqlUtils.generateDelete(req.schema, table, columns, primaryKeys) + '\n';
+            }
         }
 
         scripts += '\n\n'
     }
-    console.log(scripts);
+
+    if (req.execute) {
+        const client = await pool.connect();
+        result = await client
+            .query(scripts);
+        client.release();
+    }
+
     return scripts;
+}
+
+const createPgsqlSchema = async (pool, schemaName) => {
+    const client = await pool.connect();
+    result = await client
+        .query(`CREATE SCHEMA ${schemaName};`);
+    client.release();
 }

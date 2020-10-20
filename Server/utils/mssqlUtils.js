@@ -41,7 +41,7 @@ exports.generateCreate = (schema, table, columnInfo) => {
     columns = columns.substring(0, columns.length - 2);
 
     return `CREATE OR ALTER PROC ${schema}.ins_${table.split('.')[1]}\n${parametersWithType}\
-                \nAS\nBEGIN\n    INSERT INTO ${table}(${columns})\n        VALUES(${parameters});\nEND\nGO`;
+                \nAS\nBEGIN\n    INSERT INTO ${table}(${columns})\n        VALUES(${parameters});\nEND\nGO\n`;
 };
 
 exports.generateRead = (schema, table, columnInfo) => {
@@ -52,17 +52,17 @@ exports.generateRead = (schema, table, columnInfo) => {
     Object.entries(columnInfo).forEach(([key, value]) => {
         // Exclude identities
         //if (value.id == 0) {
-        parameters += `(@${value.nombre} IS NULL) OR (@${value.nombre}=${value.nombre}) AND `;
+        parameters += `(@${value.nombre} IS NULL) OR (@${value.nombre}=${value.nombre})\n        AND `;
         parametersWithType += `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`},\n`;
         columns += `${value.nombre}, `;
         //}
     });
 
-    parameters = parameters.substring(0, parameters.length - 5);
+    parameters = parameters.substring(0, parameters.length - 13);
     parametersWithType = parametersWithType.substring(0, parametersWithType.length - 2);
     columns = columns.substring(0, columns.length - 2);
     return `CREATE OR ALTER PROC ${schema}.read_${table.split('.')[1]}\n${parametersWithType}\
-                \nAS\nBEGIN\n    SELECT * FROM ${table}(${columns})\n        WHERE ${parameters}\nEND\nGO`;
+                \nAS\nBEGIN\n    SELECT ${columns} FROM ${table}\n    WHERE ${parameters}\nEND\nGO\n`;
 }
 
 exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
@@ -72,7 +72,7 @@ exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
         if (primaryKeys.filter(pk => pk.COLUMN_NAME == value.nombre).length == 0) {
             updateData += `\n        ${value.nombre} = ISNULL(@${value.nombre}, ${value.nombre}),`;
             parametersWithType +=
-                `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`} = NULL,\n`;
+                `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`},\n`;
         } else {
             parametersWithType +=
                 `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`},\n`;
@@ -88,27 +88,23 @@ exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
     updateData = updateData.substring(0, updateData.length - 1);
 
     return `CREATE OR ALTER PROC ${schema}.upd_${table.split('.')[1]}\n${parametersWithType}\
-                \nAS\nBEGIN\n    UPDATE ${table} SET${updateData}\n    WHERE\n${pkData};\nEND\nGO`;
+                \nAS\nBEGIN\n    UPDATE ${table} SET${updateData}\n    WHERE\n${pkData};\nEND\nGO\n`;
 }
 
 exports.generateDelete = (schema, table, columnInfo, primaryKeys) => {
     let parameters = '';
     let parametersWithType = '';
-    let columns = '';
 
     Object.entries(columnInfo).forEach(([key, value]) => {
-        // Exclude identities
-        if (value.id == 1) {
-            parameters += `@${value.nombre}, `;
+        if (primaryKeys.filter(pk => pk.COLUMN_NAME == value.nombre).length > 0) {
+            parameters += `${value.nombre} = @${value.nombre} AND `;
             parametersWithType += `    @${value.nombre} ${value.tipo}${value.cp == null ? '' : `(${value.cp})`},\n`;
-            columns += `${value.nombre}, `;
         }
     });
 
-    parameters = parameters.substring(0, parameters.length - 2);
+    parameters = parameters.substring(0, parameters.length - 5);
     parametersWithType = parametersWithType.substring(0, parametersWithType.length - 2);
-    columns = columns.substring(0, columns.length - 2);
 
     return `CREATE OR ALTER PROC ${schema}.del_${table.split('.')[1]}\n${parametersWithType}\
-                \nAS\nBEGIN\n    DELETE FROM ${table} WHERE ${columns} = ${parameters};\nEND \GO`;
+                \nAS\nBEGIN\n    DELETE FROM ${table} WHERE ${parameters};\nEND\nGO\n`;
 }
