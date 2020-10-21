@@ -1,3 +1,10 @@
+/**
+ * Obtiene las columnas de una tabla en mssql
+ * 
+ * @param {string} schema esquema de la tabla
+ * @param {string} table nombre de la tabla
+ * @param {Pool} pool pool de conexiones de mssql
+ */
 exports.getColumns = async (schema, table, pool) => {
     const result = await pool.request()
         .query(`SELECT  COLUMN_NAME nombre,\
@@ -13,6 +20,13 @@ exports.getColumns = async (schema, table, pool) => {
     return result.recordset;
 }
 
+/**
+ * Obtiene las llaves primarias de una tabla en mssql
+ * 
+ * @param {String} schema esquema de la tabla
+ * @param {String} table nombre de la tabla
+ * @param {Pool} pool pool de conexiones de mssql
+ */
 exports.getPrimaryKeys = async (schema, table, pool) => {
     const result = await pool.request()
         .query(`SELECT COLUMN_NAME\
@@ -22,6 +36,13 @@ exports.getPrimaryKeys = async (schema, table, pool) => {
     return result.recordset;
 }
 
+/**
+ * Genera el procedimiento de inserción de datos de una tabla en pgsql
+ * 
+ * @param {string} schema esquema de la tabla
+ * @param {string} table nombre de la tabla
+ * @param {Array} columnInfo lista con la info de las columnas
+ */
 exports.generateCreate = (schema, table, columnInfo) => {
     let parameters = '';
     let parametersWithType = '';
@@ -44,6 +65,13 @@ exports.generateCreate = (schema, table, columnInfo) => {
                 \nAS\nBEGIN\n    INSERT INTO ${table}(${columns})\n        VALUES(${parameters});\nEND\nGO\n`;
 };
 
+/**
+ * Genera el procedimiento de lectura de datos de una tabla en pgsql
+ * 
+ * @param {string} schema esquema de la tabla
+ * @param {string} table nombre de la tabla
+ * @param {Array} columnInfo lista con la info de las columnas
+ */
 exports.generateRead = (schema, table, columnInfo) => {
     let parameters = '';
     let parametersWithType = '';
@@ -65,6 +93,14 @@ exports.generateRead = (schema, table, columnInfo) => {
                 \nAS\nBEGIN\n    SELECT ${columns} FROM ${table}\n    WHERE ${parameters}\nEND\nGO\n`;
 }
 
+/**
+ * Genera el procedimiento de actualizacion de datos de una tabla en pgsql
+ * 
+ * @param {string} schema esquema de la tabla
+ * @param {string} table nombre de la tabla
+ * @param {Array} columnInfo lista con la info de las columnas
+ * @param {Array} primaryKeys lista con la info de las primary keys
+ */
 exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
     let parametersWithType = '', updateData = '', pkData = '';
 
@@ -91,6 +127,14 @@ exports.generateUpdate = (schema, table, columnInfo, primaryKeys) => {
                 \nAS\nBEGIN\n    UPDATE ${table} SET${updateData}\n    WHERE\n${pkData};\nEND\nGO\n`;
 }
 
+/**
+ * Genera el procedimiento de eliminación de datos de una tabla en pgsql
+ * 
+ * @param {string} schema esquema de la tabla
+ * @param {string} table nombre de la tabla
+ * @param {Array} columnInfo lista con la info de las columnas
+ * @param {Array} primaryKeys lista con la info de las primary keys
+ */
 exports.generateDelete = (schema, table, columnInfo, primaryKeys) => {
     let parameters = '';
     let parametersWithType = '';

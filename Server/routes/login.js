@@ -7,6 +7,19 @@ const jwt = require('jsonwebtoken');
 const secret_token = require('../config/envconfig').secret_token;
 const poolManager = require('../poolManager');
 
+/**
+ * @api{post} /login Agrega un nuevo cubículo
+ * @apiName login
+ * @apiGroup Login
+ *  
+ * @apiParam {String} user Nombre del usuario de la db
+ * @apiParam {String} password Password del usuario
+ * @apiParam {String} server Direccion del server
+ * @apiParam {String} database Nombre de la db
+ * @apiParam {String} driver Driver de la db (mssql o pgsql)
+ * 
+ * @apiSuccess {JSON} repuesta con el token del usuario
+ */
 router.post('/login', middleware.validateRequest([
     "user",
     "password",
@@ -14,8 +27,12 @@ router.post('/login', middleware.validateRequest([
     "database",
     "driver"
 ], consts.IS_BODY_REQ), function (req, res) {
+    // Se genera el token
     const token = jwt.sign(JSON.stringify(req.body), secret_token);
+
+    // Se intenta establecer y guardar la conexión
     poolManager.addConnection(token, req.body).then(result => {
+        // Validación de los posibles estados de la conexión
         if (result == 0) {
             res.status(HttpStatus.OK).json({
                 message: 'Connection successful',

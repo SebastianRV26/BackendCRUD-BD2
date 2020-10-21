@@ -1,3 +1,8 @@
+/**
+ * Extrae el token de un request
+ * 
+ * @param {*} req request
+ */
 exports.getBearerToken = (req) => {
     const bearerHeader = req.headers['authorization'];
     if (typeof bearerHeader !== 'undefined') {

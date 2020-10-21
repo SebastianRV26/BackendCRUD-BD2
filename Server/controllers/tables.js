@@ -1,17 +1,23 @@
 const { ConnectionPool } = require('mssql');
 const poolManager = require('../poolManager');
 
+/**
+ * Obtiene toda la informacion de las tablas
+ * 
+ * @param {string} token el token que permite identificar el usuario dueño de la conexion
+ * @param {any} req request
+ */
 exports.getTables = async (token, req) => {
     const pool = await poolManager.getConnection(token);
     let result;
 
-    // mssql
+    // conexion mssql
     if (pool instanceof ConnectionPool) {
         result = await pool.request()
             .query("SELECT CONCAT(TABLE_SCHEMA, '.', TABLE_NAME) AS name \
                         FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME != 'sysdiagrams'");
         return result.recordset;
-    } else { // pgsql
+    } else { // conexion pgsql
         const client = await pool.connect();
         result = await client
             .query("SELECT CONCAT(TABLE_SCHEMA, '.', TABLE_NAME) AS name \
@@ -22,11 +28,17 @@ exports.getTables = async (token, req) => {
     }
 }
 
+/**
+ * Obtiene toda la informacion de los esquemas
+ * 
+ * @param {string} token el token que permite identificar el usuario dueño de la conexion
+ * @param {any} req request
+ */
 exports.getSchemes = async (token, req) => {
     const pool = await poolManager.getConnection(token);
     let result;
 
-    // mssql
+    // conexion mssql
     if (pool instanceof ConnectionPool) {
         result = await pool.request()
             .query("SELECT s.name as table_schema\
@@ -36,7 +48,7 @@ exports.getSchemes = async (token, req) => {
                     WHERE u.issqluser = 1\
                     and u.name not in ('sys', 'guest', 'INFORMATION_SCHEMA')");
         return result.recordset;
-    } else { // postgresql
+    } else { // conexion postgresql
         const client = await pool.connect();
         result = await client.query("SELECT s.nspname AS table_schema\
             FROM pg_catalog.pg_namespace s\
@@ -47,5 +59,4 @@ exports.getSchemes = async (token, req) => {
         result.rows.push({table_schema:"public"})
         return result.rows;
     }
-    return result;
 }
