@@ -1,4 +1,4 @@
-const { ConnectionPool, ConnectionPool } = require('mssql');
+const { ConnectionPool } = require('mssql');
 const { Pool } = require('pg');
 const poolManager = require('../poolManager');
 const mssqlUtils = require('../utils/mssqlUtils');
