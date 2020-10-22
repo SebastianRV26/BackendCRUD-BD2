@@ -56,7 +56,7 @@ exports.getSchemes = async (token, req) => {
                 WHERE nspname NOT IN ('information_schema', 'pg_catalog', 'public')\
                 AND nspname not like 'pg_toast%'\
                 AND nspname not like 'pg_temp_%';");
-        result.rows.push({table_schema:"public"})
+        result.rows.unshift({table_schema:"public"})
         return result.rows;
     }
 }
